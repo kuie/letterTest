@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+</head>
+<body>
+<canvas id="canvas"></canvas>
+<script>
+    /*图片滤镜效果
+     * 可对图片实现自定义的滤镜效果
+     * 效果可设置：
+     * cell_size:最小像素块大小（方形像素）;
+     * blur:偏移量（x\y轴四向偏移）
+     * */
+    function myBlur(boxId, src, cell_size, blur) {
+        var canvas = document.getElementById(boxId),
+            ctx = canvas.getContext("2d"),
+            image = new Image();
+        image.src = src;
+        image.onload = function () {
+            canvas.width = image.width;
+            canvas.height = image.height;
+            ctx.drawImage(image, 0, 0);
+            var imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+
+            function mixColor(x, y, max_s) {
+                var c0 = getColor(x, y),
+                    ct = getColor(x - max_s, y),
+                    cr = getColor(x, y + max_s),
+                    cb = getColor(x + max_s, y),
+                    cl = getColor(x, y - max_s);
+                return {
+                    r: (c0.r + ct.r + cr.r + cb.r + cl.r) / 5,
+                    g: (c0.g + ct.g + cr.g + cb.g + cl.g) / 5,
+                    b: (c0.b + ct.b + cr.b + cb.b + cl.b) / 5,
+                    a: (c0.a + ct.a + cr.a + cb.a + cl.a) / 5,
+                    getColor: function () {
+                        var arr = [this.r, this.g, this.b, this.a];
+                        return 'rgba(' + arr.join() + ')';
+                    }
+                }
+            }
+
+            function getColor(x, y) {
+                x < 0 && (x = -x);
+                y < 0 && (y = -y);
+                x > canvas.height && (x = canvas.height - x % canvas.height);
+                y > canvas.width && (y = canvas.width - y % canvas.width);
+                var num = (x * canvas.width + y) * 4;
+                return {
+                    r: imageData.data[Math.floor(num)] - 0,
+                    g: imageData.data[Math.floor(num) + 1] - 0,
+                    b: imageData.data[Math.floor(num) + 2] - 0,
+                    a: imageData.data[Math.floor(num) + 3] - 0
+                };
+            }
+
+            draw(cell_size);
+            function draw(cell_size) {
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                for (var i = Math.floor(cell_size / 2); i < canvas.height + cell_size % canvas.height; i += cell_size) {
+                    for (var j = Math.floor(cell_size / 2); j < canvas.width + cell_size % canvas.width; j += cell_size) {
+                        ctx.fillStyle = mixColor(i, j, blur).getColor();
+                        ctx.fillRect(j, i, cell_size, cell_size);
+                    }
+                }
+            }
+        };
+    }
+    /*点阵*/
+    function pointBox(boxId, src) {
+        var canvas = document.getElementById(boxId),
+            ctx = canvas.getContext("2d"),
+            image = new Image();
+        image.src = src;
+        image.onload = function () {
+            var cell_size = image.width / 250;
+            canvas.width = image.width;
+            canvas.height = image.height;
+            ctx.drawImage(image, 0, 0);
+            var imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+
+            function getColor(x, y) {
+                x < 0 && (x = -x);
+                y < 0 && (y = -y);
+                x > canvas.height && (x = canvas.height - x % canvas.height);
+                y > canvas.width && (y = canvas.width - y % canvas.width);
+                var num = (x * canvas.width + y) * 4;
+                return {
+                    r: imageData.data[Math.floor(num)] - 0,
+                    g: imageData.data[Math.floor(num) + 1] - 0,
+                    b: imageData.data[Math.floor(num) + 2] - 0,
+                    a: imageData.data[Math.floor(num) + 3] - 0,
+                    getColor: function () {
+                        var arr = [this.r, this.g, this.b, this.a];
+                        return 'rgba(' + arr.join() + ')';
+                    }
+                };
+            }
+
+            draw(cell_size);
+            function draw(cell_size) {
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                function getN(len, n) {
+                    return Math.floor(len * n / 100);
+                }
+
+                for (var i = 0; i <= 100; i++) {
+                    var y = getN(canvas.width, i);
+                    for (var j = 0; j <= 100; j++) {
+                        ctx.beginPath();
+                        ctx.fillStyle = getColor(getN(canvas.width, j), y).getColor();
+                        ctx.arc(y, getN(canvas.width, j), cell_size, 0, Math.PI * 2);
+                        ctx.fill();
+                        ctx.closePath();
+                    }
+                }
+            }
+        };
+    }
+    /*黑白灰*/
+    function gray(boxId, src) {
+        var canvas = document.getElementById(boxId),
+            ctx = canvas.getContext("2d"),
+            image = new Image();
+        image.src = src;
+        image.onload = function () {
+            var cell_size = image.width / 250;
+            canvas.width = image.width;
+            canvas.height = image.height;
+            ctx.drawImage(image, 0, 0);
+            var imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+
+            function getColor(x, y) {
+                x < 0 && (x = -x);
+                y < 0 && (y = -y);
+                x > canvas.height && (x = canvas.height - x % canvas.height);
+                y > canvas.width && (y = canvas.width - y % canvas.width);
+                var num = (x * canvas.width + y) * 4;
+                return {
+                    r: imageData.data[Math.floor(num)] - 0,
+                    g: imageData.data[Math.floor(num) + 1] - 0,
+                    b: imageData.data[Math.floor(num) + 2] - 0,
+                    a: imageData.data[Math.floor(num) + 3] - 0,
+                    getColor: function () {
+                        var arr = [this.r, this.g, this.b, this.a];
+                        var c = 0;
+                        for (var i = 0; i < arr.length; i++) {
+                            c += arr[i] - 0;
+                        }
+                        c = Math.floor(c / 4);
+
+                        return 'rgba(' + c + ',' + c + ',' + c + ',' + c + ')';
+                    }
+                };
+            }
+
+            draw(cell_size);
+            function draw(cell_size) {
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                function getN(len, n) {
+                    return Math.floor(len * n / 100);
+                }
+
+                for (var i = 0; i <= 100; i++) {
+                    var y = getN(canvas.width, i);
+                    for (var j = 0; j <= 100; j++) {
+                        ctx.beginPath();
+                        ctx.fillStyle = getColor(getN(canvas.width, j), y).getColor();
+                        ctx.arc(y, getN(canvas.width, j), cell_size, 0, Math.PI * 2);
+                        ctx.fill();
+                        ctx.closePath();
+                    }
+                }
+            }
+        };
+    }
+    //    myBlur("canvas", "./5.jpg", 2, 100);
+    //    pointBox("canvas", "./cat.jpg");
+    //    gray("canvas", "./4.jpg");
+</script>
+</body>
+</html>
