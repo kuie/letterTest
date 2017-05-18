@@ -122,12 +122,28 @@
     mo.observe(controlCheckBox, option);
 </script>
 <script>
-    var mailCounter = 0;
-    var subscriber1 = subscribe('inbox/newMessage', function (topic, data) {
-        console.log('A new message was received:', topic);
-        $('.messageSender').html(data.sender);
-        $('.messagePreview').html(data.body);
-    })
+    /*var mailCounter = 0;
+     var subscriber1 = subscribe('inbox/newMessage', function (topic, data) {
+     console.log('A new message was received:', topic);
+     $('.messageSender').html(data.sender);
+     $('.messagePreview').html(data.body);
+     });
+     var subscriber2 = subscribe('inbox/newMessage', function (topic, data) {
+     $('.newMessageCounter').html(mailCounter++);
+     });
+     publish('inbox/newMessage', [{
+     sender: 'hello@google.com',
+     body: 'Hey there! How are you doing today?'
+     }]);*/
+    var indexedDB = window.indexedDB || window.msIndexedDB || window.mozIndexedDB || window.webkitIndexedDB;
+    var request = indexedDB.open('baidu', 1), db;
+    request.onerror = function (event) {
+        alert('当打开' + event.target.errerCode + '时遇到了一些问题')
+    };
+    request.onsuccess = function (event) {
+        db = event.target.result;
+        console.log('当前版本号为' + db.version);
+    }
 </script>
 </body>
 </html>
