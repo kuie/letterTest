@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+</head>
+<body>
+<button id="addNewObserver">Add New Observer</button>
+<input type="checkbox" id="mainCheckBox">
+<div id="observerContainer"></div>
+<script src="https://code.jquery.com/jquery-2.2.4.js"></script>
+<script>
+    function ObserverList() {
+        this.observerList = [];
+    }
+    /*扩展构造器ObserverList*/
+    ObserverList.prototype.Add = function (obj) {
+        return this.observerList.push(obj);
+    };
+    ObserverList.prototype.Empty = function () {
+        this.observerList = [];
+    };
+    ObserverList.prototype.Count = function () {
+        return this.observerList.length;
+    };
+    ObserverList.prototype.Get = function (index) {
+        if (index < this.observerList.length && index > -1) {
+            return this.observerList[index];
+        }
+    };
+    ObserverList.prototype.Insert = function (obj, index) {
+        var pointer = -1;
+        if (index === 0) {
+            this.observerList.unshift(obj);
+            pointer = index;
+        } else if (index === this.observerList.length) {
+            this.observerList.push(obj);
+            pointer = index;
+        }
+        return pointer;
+    };
+    ObserverList.prototype.IndexOf = function (obj, startIndex) {
+        var i = startIndex, pointer = -1;
+        while (i < this.observerList.length) {
+            if (this.observerList[i] === obj) {
+                pointer = i;
+            }
+            i++;
+        }
+        return pointer;
+    };
+    ObserverList.prototype.RemoveIndexAt = function (index) {
+        if (index === 0) {
+            this.observerList.shift();
+        } else if (index === this.observerList.length - 1) {
+            this.observerList.pop();
+        }
+    };
+    /*为Dom元素扩展属性*/
+    function extend(obj, extension) {
+        for (var key in obj) {
+            extension[key] = obj[key];
+        }
+    }
+    /*创建主题构造器，基于ObserverList*/
+    function Subject() {
+        this.observers = new ObserverList();
+    }
+    /*扩展Subject*/
+    Subject.prototype.AddObserver = function (observer) {
+        this.observers.Add(observer);
+    };
+    Subject.prototype.RemoveObserver = function (observer) {
+        this.observers.RemoveIndexAt(this.observers.IndexOf(observer, 0));
+    };
+    Subject.prototype.Notify = function (context) {
+        var observerCount = this.observers.Count();
+        for (var i = 0; i < observerCount; i++) {
+            context = !context;
+            this.observers.observerList[i].Update(context);
+        }
+    };
+    /*自定义功能Update*/
+    function Observer() {
+        this.Update = function () {
+            console.log('Update-->' + this);
+        };
+    }
+    var controlCheckBox = document.getElementById('mainCheckBox'),
+        addBtn = document.getElementById('addNewObserver'),
+        container = document.getElementById('observerContainer');
+    extend(new Subject(), controlCheckBox);
+    controlCheckBox.onclick = new Function('controlCheckBox.Notify(controlCheckBox.checked)');
+    addBtn.onclick = AddNewObserver;
+    function AddNewObserver() {
+        var check = document.createElement('input');
+        check.type = 'checkbox';
+        extend(new Observer(), check);
+        check.Update = function (value) {
+            this.checked = value;
+            console.log('check-->' + value);
+        };
+
+        controlCheckBox.AddObserver(check);
+        container.appendChild(check);
+    }
+    var MutationObserver = window.MutationObserver ||
+            window.WebKitMutationObserver ||
+            window.MozMutationObserver,
+        mo = new MutationObserver(function (records) {
+            console.log(records);
+        }),
+        option = {
+            'childList': true, /*子元素发生改变*/
+            'subtree': true, /*连带观察后代元素*/
+            'characterData': true, /*html文本内容发生改变(包含备注)*/
+            'characterDataOldValue': true, /*保存之前的值*/
+            'attributes': true, /*属性发生改变*/
+            'attributeOldValue': true, /*在attributes属性已经设为true的前提下,如果需要将发生变化的属性节点之前的属性值记录下来(记录到下面MutationRecord对象的oldValue属性中),则设置为true*/
+            'attributeFilter': ['observers.observerList']
+        };
+    mo.observe(controlCheckBox, option);
+</script>
+<script>
+    var mailCounter = 0;
+    var subscriber1 = subscribe('inbox/newMessage', function (topic, data) {
+        console.log('A new message was received:', topic);
+        $('.messageSender').html(data.sender);
+        $('.messagePreview').html(data.body);
+    })
+</script>
+</body>
+</html>

@@ -6,11 +6,7 @@
 </head>
 
 <body>
-<!--<canvas id="canvas"></canvas>-->
-<button id="btn">按钮</button>
-<div id="box">测试div</div>
-<input type="text">
-<script src="https://code.jquery.com/jquery-2.2.4.js"></script>
+<canvas id="canvas"></canvas>
 <script>
     /*图片滤镜效果
      * 可对图片实现自定义的滤镜效果
@@ -184,32 +180,6 @@
     /*myBlur("canvas", "./5.jpg", 2, 100);
      pointBox("canvas", "./cat.jpg");
      gray("canvas", "./4.jpg");*/
-    var btn = document.getElementById("btn"),
-        box = document.getElementById("box"),
-        MutationObserver = window.MutationObserver ||
-            window.WebKitMutationObserver ||
-            window.MozMutationObserver,
-        mo = new MutationObserver(function (records) {
-            console.log(records);
-        }),
-        option = {
-            'childList': true, /*子元素发生改变*/
-            'subtree': true, /*连带观察后代元素*/
-            'characterData': true, /*html文本内容发生改变(包含备注)*/
-            'characterDataOldValue': true, /*保存之前的值*/
-            'attributes': true, /*属性发生改变*/
-            'attributeOldValue': true /*在attributes属性已经设为true的前提下,如果需要将发生变化的属性节点之前的属性值记录下来(记录到下面MutationRecord对象的oldValue属性中),则设置为true*/
-//            'attributeFilter': ['class', 'text', 'value', 'checked']
-        },
-        input = document.getElementsByTagName('input')[0];
-    mo.observe(input, option);
-    //        mo.disconnect();/*关闭监视者*/
-    window.onload = function () {
-        btn.onclick = function () {
-            input.value = input.value === "active" ? "" : "active";
-
-        };
-    };
 </script>
 </body>
 </html>
