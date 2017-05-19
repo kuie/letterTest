@@ -10,6 +10,7 @@
 <button id="add">逐条新增加</button>
 <button id="delete">Id删除</button>
 <button id="search">email查询</button>
+<button id="fuzzySearch">模糊查询</button>
 <script>
     var indexedDB = window.indexedDB || window.msIndexedDB || window.mozIndexedDB || window.webkitIndexedDB,
         dbName = "MyDatabase",
@@ -25,6 +26,7 @@
         Btn_add = document.getElementById('add'),
         Btn_delete = document.getElementById('delete'),
         Btn_search = document.getElementById('search'),
+        Btn_fuzzy = document.getElementById('fuzzySearch'),
         input = document.getElementsByTagName('input')[0];
     //初始化数据库
     Btn_create.onclick = function () {//打开数据库失败的回调
@@ -153,8 +155,29 @@
             }
         };
     };
+    Btn_fuzzy.onclick = function () {
+        var request = indexedDB.open(dbName);
+        request.onerror = DBError;
+        request.onsuccess = function (event) {
+            var db = event.target.result;
+            fuzzySearch(db, input.value);
+        }
+    };
     function DBError() {
         console.log('数据库链接出现错误');
+    }
+    /*模糊查询*/
+    function fuzzySearch(db, keyword) {
+        var transaction = db.transaction(tableName, "readonly"),
+            objectStore = transaction.objectStore(tableName),
+            request = objectStore.openCursor();
+        request.onsuccess = function (event) {
+            var cursor = event.target.result;
+            if (cursor) {
+                new RegExp(keyword, 'g').test(JSON.stringify(cursor.value)) && console.log(JSON.stringify(cursor.value));
+                cursor.continue();
+            }
+        };
     }
 </script>
 </body>
