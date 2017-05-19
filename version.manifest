@@ -1,0 +1,7 @@
+CACHE MANIFEST
+# VERSION 2.0
+test01.css
+js/test01.js
+NETWORK:
+js/test01.js
+FALLBACK:

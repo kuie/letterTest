@@ -1,12 +1,16 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" manifest="clock.manifest">
 <head>
     <meta charset="UTF-8">
     <title>Title</title>
+    <link rel="stylesheet" href="test01.css">
 </head>
 <body>
 <button id="addNewObserver">Add New Observer</button>
 <input type="checkbox" id="mainCheckBox">
+<p>
+    <output id="clock"></output>
+</p>
 <div id="observerContainer"></div>
 <script src="https://code.jquery.com/jquery-2.2.4.js"></script>
 <script>
@@ -135,15 +139,23 @@
      sender: 'hello@google.com',
      body: 'Hey there! How are you doing today?'
      }]);*/
-    var indexedDB = window.indexedDB || window.msIndexedDB || window.mozIndexedDB || window.webkitIndexedDB;
-    var request = indexedDB.open('baidu', 1), db;
-    request.onerror = function (event) {
-        alert('当打开' + event.target.errerCode + '时遇到了一些问题')
-    };
-    request.onsuccess = function (event) {
-        db = event.target.result;
-        console.log('当前版本号为' + db.version);
-    }
+    caches.delete('c1');
+    caches.delete('c2');
+    Promise.all([
+        caches.open('c3').then(function (cache) {
+            return cache.put('/heihei', new Response('aaa', {status: 201}));
+        }),
+        caches.open('c2').then(function (cache) {
+            return cache.put('/hehe', new Response('bbb', {status: 201}));
+        })
+    ]).then(function () {
+        return caches.match('/hehe');
+    }).then(function (response) {
+        return response.text();
+    }).then(function (body) {
+        console.log(body + 'cccc');
+    });
 </script>
+<script src="js/test01.js"></script>
 </body>
 </html>

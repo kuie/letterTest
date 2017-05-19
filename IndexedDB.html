@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>IndexedDB操作</title>
+</head>
+<body>
+<label><input type="text"></label>
+<button id="create">新建表</button>
+<button id="add">逐条新增加</button>
+<button id="delete">Id删除</button>
+<button id="search">email查询</button>
+<script>
+    var indexedDB = window.indexedDB || window.msIndexedDB || window.mozIndexedDB || window.webkitIndexedDB,
+        dbName = "MyDatabase",
+        addData = [
+            {id: "001", name: "kuie", email: 0},
+            {id: "002", name: "kuie_kuie", email: 1},
+            {id: "003", name: "scofield", email: "3@qq.com"},
+            {id: "004", name: "tom", email: "4@qq.com"},
+            {id: "005", name: "jquery", email: "5@qq.com"}
+        ],
+        tableName = 'students',
+        Btn_create = document.getElementById('create'),
+        Btn_add = document.getElementById('add'),
+        Btn_delete = document.getElementById('delete'),
+        Btn_search = document.getElementById('search'),
+        input = document.getElementsByTagName('input')[0];
+    //初始化数据库
+    Btn_create.onclick = function () {//打开数据库失败的回调
+        var request = indexedDB.open(dbName);
+        request.onerror = DBError;
+        request.onupgradeneeded = function (event) {
+            var db = event.target.result;
+            //创建表,以id字段作为主键来确保唯一,使用keyPath表示
+            var objectStore = db.createObjectStore(tableName, {keyPath: "id"});
+
+            //给表添加索引
+            objectStore.createIndex("name", "name", {unique: false});//非unique索引
+            objectStore.createIndex("email", "email", {unique: true});//email字段作为unique索引（主键）
+            console.log("---新建数据库成功---");
+        };
+    };
+    Btn_add.onclick = function () {
+        /*console.log('新增');
+         //打开数据库失败的回调
+         request.onerror = function () {
+         console.log("打开数据库失败");
+         };
+         request.onsuccess = function (event) {
+         console.log('添加数据');
+         var db = event.target.result;
+         var objectStore;
+         var transaction = db.transaction([tableName], 'readwrite');
+         //事务主要有三个回调,error,abort,success
+         transaction.onerror = function (event) {
+         //处理错误
+         console.log(event);
+         alert('出现错误');
+         };
+         transaction.onbort = function (event) {
+         //事务中断处理
+         console.log(event);
+         alert('进程中断');
+         };
+         transaction.oncomplete = function () {
+         console.log("添加数据成功");
+         };
+         objectStore = transaction.objectStore(tableName);
+         for (var i = 0; i < addData.length; i++) {
+         var request = objectStore.add(addData[i]);
+
+         request.onsuccess = function (event) {
+         console.log("成功添加一条数据");
+         }
+         }
+         };*/
+        var request = indexedDB.open(dbName);
+
+//打开数据库失败的回调
+        request.onerror = DBError;
+//代开数据成功的回调
+        request.onsuccess = function (event) {
+            var db = event.target.result;
+            var transaction = db.transaction([tableName], 'readwrite');
+            var objectStore;
+            var i;
+
+            //事务主要有三个回调,error,abort,success
+            transaction.onerror = function (event) {
+                //处理错误
+                console.log(event);
+            }
+            transaction.onbort = function () {
+                //事务中断处理
+            }
+            transaction.oncomplete = function () {
+                console.log("添加数据成功");
+            }
+
+            objectStore = transaction.objectStore(tableName);
+
+            for (i  in addData) {
+                var request = objectStore.add(addData[i]);
+
+                request.onsuccess = function (event) {
+                    console.log("add one success");
+                }
+            }
+        };
+    };
+    Btn_delete.onclick = function () {
+        var request = window.indexedDB.open(dbName);
+        request.onerror = DBError;
+        request.onsuccess = function (event) {
+            var objectStore,
+                transaction,
+                db = event.target.result;
+            transaction = db.transaction([tableName], 'readwrite');
+            transaction.onerror = function (event) {
+                //处理错误
+                console.log("error when delete 001 " + event.target.errorCode);
+            };
+            transaction.onbort = function () {
+                //事务中断处理
+                alert('处理中断');
+            };
+            transaction.oncomplete = function () {
+                console.log("删除学生" + input.value + "成功");
+            };
+            objectStore = transaction.objectStore(tableName);
+            objectStore.delete(input.value);
+        };
+    };
+    Btn_search.onclick = function () {
+        var request = window.indexedDB.open(dbName);
+        request.onerror = DBError;
+        request.onsuccess = function (event) {
+            var index;
+            var objectStore;
+            var db = event.target.result;
+            /*db.transaction
+             * 事物-->可多次操作数据库
+             * */
+            objectStore = db.transaction([tableName]).objectStore(tableName);
+            //根据索引字段email朝找3@qq.com的学生
+            index = objectStore.index("email").get(input.value);
+            index.onsuccess = function (event) {
+                console.log(event.target.result);
+            };
+            index.onerror = function (event) {
+                console.log("error when find  by index " + event.target.errorCode);
+            }
+        };
+    };
+    function DBError() {
+        console.log('数据库链接出现错误');
+    }
+</script>
+</body>
+</html>
