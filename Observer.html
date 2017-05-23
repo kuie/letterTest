@@ -29,14 +29,15 @@
 //            'attributeFilter': ['class', 'text', 'value', 'checked']
         },
         input = document.getElementsByTagName('input')[0];
-    mo.observe(input, option);
+    mo.observe(document.body, option);
     //        mo.disconnect();/*关闭监视者*/
     $(input).select(function () {
-       console.log('3123');
+        console.log('3123');
     });
     window.onload = function () {
         btn.onclick = function () {
-            input.value = input.value === "active" ? "" : "active";
+            input.className = 'a321312';
+            box.innerText += '3311';
         };
     };
 </script>

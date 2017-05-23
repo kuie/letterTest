@@ -177,9 +177,23 @@
             }
         };
     }
-    /*myBlur("canvas", "./5.jpg", 2, 100);
-     pointBox("canvas", "./cat.jpg");
+    myBlur("canvas", "./5.jpg", 2, 100);
+    /*pointBox("canvas", "./cat.jpg");
      gray("canvas", "./4.jpg");*/
+    setInterval(function () {
+        var mode = Math.floor(Math.random() * 3);
+        switch (mode) {
+            case 0:
+                myBlur("canvas", "./5.jpg", 2, 100);
+                break;
+            case 1:
+                pointBox("canvas", "./cat.jpg");
+                break;
+            case 2:
+                gray("canvas", "./4.jpg");
+                break;
+        }
+    }, 5000);
 </script>
 </body>
 </html>

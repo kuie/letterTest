@@ -6,20 +6,25 @@
 </head>
 <body>
 <label><input type="text"></label>
-<button id="create">新建表</button>
-<button id="add">逐条新增加</button>
+<button id="create">新建表student</button>
+<button id="add">批量新增student</button>
 <button id="delete">Id删除</button>
 <button id="search">email查询</button>
 <button id="fuzzySearch">模糊查询</button>
 <script>
+    function getRandom(max, min) {
+        max = max || 100;
+        min = min || 0;
+        return Math.floor(min + Math.random() * max);
+    }
     var indexedDB = window.indexedDB || window.msIndexedDB || window.mozIndexedDB || window.webkitIndexedDB,
         dbName = "MyDatabase",
         addData = [
-            {id: "001", name: "kuie", email: 0},
-            {id: "002", name: "kuie_kuie", email: 1},
-            {id: "003", name: "scofield", email: "3@qq.com"},
-            {id: "004", name: "tom", email: "4@qq.com"},
-            {id: "005", name: "jquery", email: "5@qq.com"}
+            {uid: getRandom(9999), name: "qwer", email: "@qq.com"},
+            {uid: getRandom(9999), name: "asdf", email: "@163.com"},
+            {uid: getRandom(9999), name: "zxcv", email: "@sina.com"},
+            {uid: getRandom(9999), name: "tyuo", email: "@live.com"},
+            {uid: getRandom(9999), name: "ghjk", email: "@baidu.com"}
         ],
         tableName = 'students',
         Btn_create = document.getElementById('create'),
@@ -29,90 +34,69 @@
         Btn_fuzzy = document.getElementById('fuzzySearch'),
         input = document.getElementsByTagName('input')[0];
     //初始化数据库
-    Btn_create.onclick = function () {//打开数据库失败的回调
-        var request = indexedDB.open(dbName);
+    indexedDB.__proto__.create = function (dbName, tableConfig) {
+        var request = this.open(dbName);
         request.onerror = DBError;
         request.onupgradeneeded = function (event) {
             var db = event.target.result;
             //创建表,以id字段作为主键来确保唯一,使用keyPath表示
-            var objectStore = db.createObjectStore(tableName, {keyPath: "id"});
-
+            tableConfig.autoIncrement = tableConfig.autoIncrement || true;
+            var objectStore = db.createObjectStore(tableConfig.tableName, {
+                keyPath: tableConfig.MainKey,
+                autoIncrement: tableConfig.autoIncrement
+            });
+            console.log('主键：' + tableConfig.MainKey + '\n是否自增：' + tableConfig.autoIncrement);
             //给表添加索引
-            objectStore.createIndex("name", "name", {unique: false});//非unique索引
-            objectStore.createIndex("email", "email", {unique: true});//email字段作为unique索引（主键）
+            for (var i in tableConfig.Keys) {
+                console.log('字段：' + i);
+                if (tableConfig.Keys[i]) {
+                    objectStore.createIndex(i, i, {unique: true});//非unique索引
+                    console.log('数据唯一');
+                } else {
+                    console.log('数据不唯一');
+                }
+            }
             console.log("---新建数据库成功---");
-        };
+        }
     };
-    Btn_add.onclick = function () {
-        /*console.log('新增');
-         //打开数据库失败的回调
-         request.onerror = function () {
-         console.log("打开数据库失败");
-         };
-         request.onsuccess = function (event) {
-         console.log('添加数据');
-         var db = event.target.result;
-         var objectStore;
-         var transaction = db.transaction([tableName], 'readwrite');
-         //事务主要有三个回调,error,abort,success
-         transaction.onerror = function (event) {
-         //处理错误
-         console.log(event);
-         alert('出现错误');
-         };
-         transaction.onbort = function (event) {
-         //事务中断处理
-         console.log(event);
-         alert('进程中断');
-         };
-         transaction.oncomplete = function () {
-         console.log("添加数据成功");
-         };
-         objectStore = transaction.objectStore(tableName);
-         for (var i = 0; i < addData.length; i++) {
-         var request = objectStore.add(addData[i]);
-
-         request.onsuccess = function (event) {
-         console.log("成功添加一条数据");
-         }
-         }
-         };*/
-        var request = indexedDB.open(dbName);
-
+    indexedDB.__proto__.add = function (dbName, tableName, data) {
+        var request = this.open(dbName);
 //打开数据库失败的回调
         request.onerror = DBError;
 //代开数据成功的回调
         request.onsuccess = function (event) {
-            var db = event.target.result;
-            var transaction = db.transaction([tableName], 'readwrite');
-            var objectStore;
-            var i;
-
-            //事务主要有三个回调,error,abort,success
+            var db = event.target.result,
+                transaction = db.transaction(tableName, 'readwrite');
             transaction.onerror = function (event) {
                 //处理错误
-                console.log(event);
-            }
+//                console.error(new Error('transaction错误！！'));
+            };
+            /*中断*/
             transaction.onbort = function () {
                 //事务中断处理
-            }
+                console.log('处理中断');
+            };
+            /*完成*/
             transaction.oncomplete = function () {
                 console.log("添加数据成功");
-            }
-
-            objectStore = transaction.objectStore(tableName);
-
-            for (i  in addData) {
-                var request = objectStore.add(addData[i]);
-
-                request.onsuccess = function (event) {
-                    console.log("add one success");
+            };
+            var objectStore = transaction.objectStore(tableName);
+            for (var i  in data) {
+                var request = objectStore.add(data[i]);
+                request.onsuccess = function () {
+                    console.log("成功添加一条数据");
+                };
+                request.onabort = function () {
+                    console.log('数据添加中断');
+                };
+                request.onerror = function () {
+                    console.log('添加数据一条失败');
                 }
             }
         };
     };
-    Btn_delete.onclick = function () {
-        var request = window.indexedDB.open(dbName);
+    indexedDB.__proto__.del = function (dbName, tableName, delArray) {
+        var request = this.open(dbName);
         request.onerror = DBError;
         request.onsuccess = function (event) {
             var objectStore,
@@ -121,18 +105,47 @@
             transaction = db.transaction([tableName], 'readwrite');
             transaction.onerror = function (event) {
                 //处理错误
-                console.log("error when delete 001 " + event.target.errorCode);
+                console.log("删除失败" + event.target.errorCode);
             };
             transaction.onbort = function () {
                 //事务中断处理
                 alert('处理中断');
             };
             transaction.oncomplete = function () {
-                console.log("删除学生" + input.value + "成功");
+                if (delArray instanceof Array) {
+                    console.log("删除" + delArray.join("、") + "成功");
+                } else {
+                    console.log("删除" + delArray + "成功");
+                }
             };
             objectStore = transaction.objectStore(tableName);
-            objectStore.delete(input.value);
+            console.log(objectStore);
+            if (delArray instanceof Array) {
+                for (var i = 0; i < delArray.length; i++) {
+                    objectStore.delete(delArray[i]);
+                }
+            } else {
+                objectStore.delete(delArray);
+            }
         };
+    };
+    Btn_create.onclick = function () {//打开数据库失败的回调
+        indexedDB.create(dbName, {
+            /*表名称*/
+            tableName: tableName,
+            /*数据唯一性：默认为false，可重复*/
+            Keys: {'name': false, 'email': false},
+            /*主键是否自增，默认为true(设置为false后如没有指定该属性值则维持自增，自增值为主键所存在的length值)*/
+            autoIncrement: false,
+            /*主键：必须属性*/
+            MainKey: 'id'
+        });
+    };
+    Btn_add.onclick = function () {
+        indexedDB.add(dbName, tableName, addData);
+    };
+    Btn_delete.onclick = function () {
+        indexedDB.del(dbName, tableName, input.value);
     };
     Btn_search.onclick = function () {
         var request = window.indexedDB.open(dbName);
@@ -159,23 +172,52 @@
         var request = indexedDB.open(dbName);
         request.onerror = DBError;
         request.onsuccess = function (event) {
-            var db = event.target.result;
-            fuzzySearch(db, input.value);
+            var db = event.target.result,
+                data = input.value[0] === '{' ? eval(input.value) : input.value;
+            fuzzySearch(db, data);
         }
     };
     function DBError() {
         console.log('数据库链接出现错误');
     }
     /*模糊查询*/
-    function fuzzySearch(db, keyword) {
+    function fuzzySearch(db, keyword, isFuzzy) {
         var transaction = db.transaction(tableName, "readonly"),
             objectStore = transaction.objectStore(tableName),
-            request = objectStore.openCursor();
+            request = objectStore.openCursor(),
+            result = [];
         request.onsuccess = function (event) {
             var cursor = event.target.result;
             if (cursor) {
-                new RegExp(keyword, 'g').test(JSON.stringify(cursor.value)) && console.log(JSON.stringify(cursor.value));
-                cursor.continue();
+                switch (typeof keyword) {
+                    case 'string':
+                        (function () {
+                            var reg = new RegExp(keyword, 'g');
+                            for (var key in cursor.value) {
+                                reg.test(cursor.value[key]) && result.push(cursor.value);
+                            }
+                        })();
+                        cursor.continue();
+                        break;
+                    case 'object':
+                        (function () {
+                            /*判别keyword筛选的项目数量*/
+                            var str, kk;
+                            for (var k in keyword) {
+                                str = keyword[k];
+                                kk = k;
+                            }
+                            if (cursor.value[keyword[kk]]) {
+                                new RegExp(str, 'g').test(cursor.value[keyword[kk]]) && console.log(JSON.stringify(cursor.value));
+                            }
+                        })();
+                        cursor.continue();
+                        break;
+                }
+            } else {
+                /*执行数据操作*/
+                console.log(result);
+                return result;
             }
         };
     }
