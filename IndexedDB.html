@@ -9,7 +9,7 @@
 <button id="create">新建表student</button>
 <button id="add">批量新增student</button>
 <button id="delete">Id删除</button>
-<button id="search">email查询</button>
+<button id="search">keyword删除</button>
 <button id="fuzzySearch">模糊查询</button>
 <script>
     function getRandom(max, min) {
@@ -19,6 +19,7 @@
     }
     var indexedDB = window.indexedDB || window.msIndexedDB || window.mozIndexedDB || window.webkitIndexedDB,
         dbName = "MyDatabase",
+        tableName = 'students',
         addData = [
             {uid: getRandom(9999), name: "qwer", email: "@qq.com"},
             {uid: getRandom(9999), name: "asdf", email: "@163.com"},
@@ -26,7 +27,6 @@
             {uid: getRandom(9999), name: "tyuo", email: "@live.com"},
             {uid: getRandom(9999), name: "ghjk", email: "@baidu.com"}
         ],
-        tableName = 'students',
         Btn_create = document.getElementById('create'),
         Btn_add = document.getElementById('add'),
         Btn_delete = document.getElementById('delete'),
@@ -96,6 +96,7 @@
         };
     };
     indexedDB.__proto__.del = function (dbName, tableName, delArray) {
+        /*默认通过主键值进行删除*/
         var request = this.open(dbName);
         request.onerror = DBError;
         request.onsuccess = function (event) {
@@ -122,12 +123,60 @@
             console.log(objectStore);
             if (delArray instanceof Array) {
                 for (var i = 0; i < delArray.length; i++) {
-                    objectStore.delete(delArray[i]);
+                    /*只能按照主键值删除数据*/
+                    objectStore.delete(delArray[i] - 0);
                 }
             } else {
-                objectStore.delete(delArray);
+                objectStore.delete(delArray - 0);
             }
         };
+    };
+    indexedDB.__proto__.search = function (dbName, tableName, searchConfig) {
+        var request = indexedDB.open(dbName);
+        request.onerror = DBError;
+        request.onsuccess = function (event) {
+            var db = event.target.result,
+                transaction = db.transaction(tableName, "readonly"),
+                objectStore = transaction.objectStore(tableName),
+                OpenCursor = objectStore.openCursor(),
+                resultArray = [];
+            OpenCursor.onsuccess = function (event) {
+                var cursor = event.target.result, searchKey;
+                if (typeof searchConfig.keyword === 'object') {
+                    for (var k in searchConfig.keyword) {
+                        searchConfig.keyword = searchConfig.keyword[k];
+                        searchKey = k;
+                    }
+                }
+                /*判断是否模糊查询*/
+                var reg = searchConfig.isFuzzy ? new RegExp(searchConfig.keyword, 'g') : new RegExp('^' + searchConfig.keyword + '$', 'g');
+                if (cursor) {
+                    switch (typeof searchConfig.keyword) {
+                        case 'string':
+                            (function () {
+                                for (var key in cursor.value) {
+                                    reg.test(cursor.value[key]) && resultArray.push(cursor.value);
+                                }
+                            })();
+                            cursor.continue();
+                            break;
+                        case 'object':
+                            (function () {
+                                /*判别keyword筛选的项目数量*/
+                                if (cursor.value[searchConfig.keyword[searchKey]]) {
+                                    reg.test(cursor.value[searchConfig.keyword[searchKey]]) && resultArray.push(cursor.value);
+                                }
+                            })();
+                            cursor.continue();
+                            break;
+                    }
+                } else {
+                    /*执行数据操作*/
+                    console.log(resultArray);
+                    if (searchConfig.fun)return searchConfig.fun(resultArray, searchConfig.funArguments);
+                }
+            };
+        }
     };
     Btn_create.onclick = function () {//打开数据库失败的回调
         indexedDB.create(dbName, {
@@ -148,78 +197,35 @@
         indexedDB.del(dbName, tableName, input.value);
     };
     Btn_search.onclick = function () {
-        var request = window.indexedDB.open(dbName);
-        request.onerror = DBError;
-        request.onsuccess = function (event) {
-            var index;
-            var objectStore;
-            var db = event.target.result;
-            /*db.transaction
-             * 事物-->可多次操作数据库
-             * */
-            objectStore = db.transaction([tableName]).objectStore(tableName);
-            //根据索引字段email朝找3@qq.com的学生
-            index = objectStore.index("email").get(input.value);
-            index.onsuccess = function (event) {
-                console.log(event.target.result);
-            };
-            index.onerror = function (event) {
-                console.log("error when find  by index " + event.target.errorCode);
-            }
+        var config = {
+            keyword: input.value[0] === '{' ? eval(input.value) : input.value,
+            fun: queryDel,
+            funArguments: {dbName: dbName, tableName: tableName},
+            isFuzzy: false
         };
+        indexedDB.search(dbName, tableName, config);
     };
     Btn_fuzzy.onclick = function () {
-        var request = indexedDB.open(dbName);
-        request.onerror = DBError;
-        request.onsuccess = function (event) {
-            var db = event.target.result,
-                data = input.value[0] === '{' ? eval(input.value) : input.value;
-            fuzzySearch(db, data);
-        }
+        var config = {
+            keyword: input.value[0] === '{' ? eval(input.value) : input.value,
+            isFuzzy: true
+        };
+        indexedDB.search(dbName, tableName, config);
     };
     function DBError() {
         console.log('数据库链接出现错误');
     }
-    /*模糊查询*/
-    function fuzzySearch(db, keyword, isFuzzy) {
-        var transaction = db.transaction(tableName, "readonly"),
-            objectStore = transaction.objectStore(tableName),
-            request = objectStore.openCursor(),
-            result = [];
-        request.onsuccess = function (event) {
-            var cursor = event.target.result;
-            if (cursor) {
-                switch (typeof keyword) {
-                    case 'string':
-                        (function () {
-                            var reg = new RegExp(keyword, 'g');
-                            for (var key in cursor.value) {
-                                reg.test(cursor.value[key]) && result.push(cursor.value);
-                            }
-                        })();
-                        cursor.continue();
-                        break;
-                    case 'object':
-                        (function () {
-                            /*判别keyword筛选的项目数量*/
-                            var str, kk;
-                            for (var k in keyword) {
-                                str = keyword[k];
-                                kk = k;
-                            }
-                            if (cursor.value[keyword[kk]]) {
-                                new RegExp(str, 'g').test(cursor.value[keyword[kk]]) && console.log(JSON.stringify(cursor.value));
-                            }
-                        })();
-                        cursor.continue();
-                        break;
-                }
-            } else {
-                /*执行数据操作*/
-                console.log(result);
-                return result;
-            }
-        };
+    /*模糊查询 未完成！！*/
+    function queryDel(Array, funArguments) {
+        indexedDB.del(funArguments.dbName, funArguments.tableName, getMainKey(Array));
+    }
+    function getMainKey(Array) {
+        var arr = [];
+        for (var i = 0; i < Array.length; i++) {
+            arr[i] = Array[i].id;
+        }
+        console.log(arr);
+        return arr;
     }
 </script>
 </body>
