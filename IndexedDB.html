@@ -8,9 +8,10 @@
 <label><input type="text"></label>
 <button id="create">新建表student</button>
 <button id="add">批量新增student</button>
-<button id="delete">Id删除</button>
-<button id="search">keyword删除</button>
+<button id="delete">关键词搜索删除</button>
+<button id="search">测试查询</button>
 <button id="fuzzySearch">模糊查询</button>
+<table id="table"></table>
 <script>
     function getRandom(max, min) {
         max = max || 100;
@@ -39,6 +40,8 @@
         request.onerror = DBError;
         request.onupgradeneeded = function (event) {
             var db = event.target.result;
+            console.log(db);
+            console.log(request);
             //创建表,以id字段作为主键来确保唯一,使用keyPath表示
             tableConfig.autoIncrement = tableConfig.autoIncrement || true;
             var objectStore = db.createObjectStore(tableConfig.tableName, {
@@ -49,8 +52,8 @@
             //给表添加索引
             for (var i in tableConfig.Keys) {
                 console.log('字段：' + i);
+                objectStore.createIndex(i, i, {unique: !!tableConfig.Keys[i]});//是否不可重复
                 if (tableConfig.Keys[i]) {
-                    objectStore.createIndex(i, i, {unique: true});//非unique索引
                     console.log('数据唯一');
                 } else {
                     console.log('数据不唯一');
@@ -79,6 +82,7 @@
             /*完成*/
             transaction.oncomplete = function () {
                 console.log("添加数据成功");
+                db.close();
             };
             var objectStore = transaction.objectStore(tableName);
             for (var i  in data) {
@@ -129,10 +133,11 @@
             } else {
                 objectStore.delete(delArray - 0);
             }
+            db.close();
         };
     };
     indexedDB.__proto__.search = function (dbName, tableName, searchConfig) {
-        var request = indexedDB.open(dbName);
+        var request = this.open(dbName);
         request.onerror = DBError;
         request.onsuccess = function (event) {
             var db = event.target.result,
@@ -142,11 +147,10 @@
                 resultArray = [];
             OpenCursor.onsuccess = function (event) {
                 var cursor = event.target.result, searchKey;
+                /*对象查找获取对象的key和value*/
                 if (typeof searchConfig.keyword === 'object') {
-                    for (var k in searchConfig.keyword) {
-                        searchConfig.keyword = searchConfig.keyword[k];
-                        searchKey = k;
-                    }
+                    searchConfig.keyword = objParsing(searchConfig.keyword).val;
+                    searchKey = objParsing(searchConfig.keyword).key;
                 }
                 /*判断是否模糊查询*/
                 var reg = searchConfig.isFuzzy ? new RegExp(searchConfig.keyword, 'g') : new RegExp('^' + searchConfig.keyword + '$', 'g');
@@ -161,23 +165,34 @@
                             cursor.continue();
                             break;
                         case 'object':
-                            (function () {
-                                /*判别keyword筛选的项目数量*/
-                                if (cursor.value[searchConfig.keyword[searchKey]]) {
-                                    reg.test(cursor.value[searchConfig.keyword[searchKey]]) && resultArray.push(cursor.value);
-                                }
-                            })();
+                            objSearch(reg, resultArray, searchConfig.keyword[searchKey], cursor.value);
                             cursor.continue();
                             break;
                     }
                 } else {
                     /*执行数据操作*/
-                    console.log(resultArray);
                     if (searchConfig.fun)return searchConfig.fun(resultArray, searchConfig.funArguments);
+                    db.close();
                 }
             };
         }
     };
+    /*对象拆解*/
+    function objParsing(obj) {
+        var result = {};
+        for (var k in obj) {
+            result.val = obj[k];
+            result.key = k;
+        }
+        return result;
+    }
+    function objSearch(reg, arr, key, val) {
+        /*判别keyword筛选的项目*/
+        return val[key] && reg.test(val[key]) && pushArr(arr, val);
+    }
+    function pushArr(arr, val) {
+        return arr.push(val);
+    }
     Btn_create.onclick = function () {//打开数据库失败的回调
         indexedDB.create(dbName, {
             /*表名称*/
@@ -194,9 +209,6 @@
         indexedDB.add(dbName, tableName, addData);
     };
     Btn_delete.onclick = function () {
-        indexedDB.del(dbName, tableName, input.value);
-    };
-    Btn_search.onclick = function () {
         var config = {
             keyword: input.value[0] === '{' ? eval(input.value) : input.value,
             fun: queryDel,
@@ -205,17 +217,40 @@
         };
         indexedDB.search(dbName, tableName, config);
     };
+    Btn_search.onclick = function () {
+        /*查询测试*/
+        var request = indexedDB.open(dbName);
+        request.onerror = DBError;
+        request.onsuccess = function (event) {
+            var db = event.target.result,
+                transaction = db.transaction(tableName, "readonly"),
+                objectStore = transaction.objectStore(tableName),
+                request1 = objectStore.get(2);
+            request1.onsuccess = function (e) {
+                var data = e.target.result;
+                console.log(data);
+            };
+        }
+    };
     Btn_fuzzy.onclick = function () {
         var config = {
             keyword: input.value[0] === '{' ? eval(input.value) : input.value,
-            isFuzzy: true
+            isFuzzy: true,
+            fun: function (result) {
+                console.log(result);
+                var html = '<tr><td>id</td><td>uid</td><td>name</td><td>email</td></tr>';
+                for (var i = 0; i < result.length; i++) {
+                    html += '<tr><td>' + result[i].id + '</td><td>' + result[i].uid + '</td><td>' + result[i].name + '</td><td>' + result[i].email + '</td></tr>'
+                }
+                document.getElementById('table').innerHTML = html;
+            }
         };
         indexedDB.search(dbName, tableName, config);
     };
     function DBError() {
         console.log('数据库链接出现错误');
     }
-    /*模糊查询 未完成！！*/
+    /*模糊查询*/
     function queryDel(Array, funArguments) {
         indexedDB.del(funArguments.dbName, funArguments.tableName, getMainKey(Array));
     }
