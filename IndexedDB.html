@@ -38,12 +38,11 @@
     indexedDB.__proto__.create = function (dbName, tableConfig) {
         var request = this.open(dbName);
         request.onerror = DBError;
+        /*创建数据库*/
         request.onupgradeneeded = function (event) {
             var db = event.target.result;
-            console.log(db);
-            console.log(request);
-            //创建表,以id字段作为主键来确保唯一,使用keyPath表示
             tableConfig.autoIncrement = tableConfig.autoIncrement || true;
+            //创建存储对象（表）,以id字段作为主键来确保唯一,使用keyPath表示
             var objectStore = db.createObjectStore(tableConfig.tableName, {
                 keyPath: tableConfig.MainKey,
                 autoIncrement: tableConfig.autoIncrement
@@ -143,7 +142,16 @@
             var db = event.target.result,
                 transaction = db.transaction(tableName, "readonly"),
                 objectStore = transaction.objectStore(tableName),
-                OpenCursor = objectStore.openCursor(),
+                index, IDB;
+            /*创建游标*/
+            if (searchConfig.range && searchConfig.range.key) {
+                index = objectStore.index(searchConfig.range.key);
+                IDB = searchConfig.range.IDB || null;
+            } else {
+                index = objectStore;
+                IDB = searchConfig.range && searchConfig.range.IDB || null;
+            }
+            var OpenCursor = index.openCursor(IDB),
                 resultArray = [];
             OpenCursor.onsuccess = function (event) {
                 var cursor = event.target.result, searchKey;
@@ -159,16 +167,22 @@
                         case 'string':
                             (function () {
                                 for (var key in cursor.value) {
-                                    reg.test(cursor.value[key]) && resultArray.push(cursor.value);
+                                    if (reg.test(cursor.value[key])) {
+                                        resultArray.push(cursor.value);
+                                        /*防止重复推入一条数据*/
+                                        break;
+                                    }
                                 }
                             })();
-                            cursor.continue();
                             break;
                         case 'object':
                             objSearch(reg, resultArray, searchConfig.keyword[searchKey], cursor.value);
-                            cursor.continue();
+                            break;
+                        case 'undefined':
+                            resultArray.push(cursor.value);
                             break;
                     }
+                    cursor.continue();
                 } else {
                     /*执行数据操作*/
                     if (searchConfig.fun)return searchConfig.fun(resultArray, searchConfig.funArguments);
@@ -188,17 +202,14 @@
     }
     function objSearch(reg, arr, key, val) {
         /*判别keyword筛选的项目*/
-        return val[key] && reg.test(val[key]) && pushArr(arr, val);
-    }
-    function pushArr(arr, val) {
-        return arr.push(val);
+        return val[key] && reg.test(val[key]) && arr.push(val);
     }
     Btn_create.onclick = function () {//打开数据库失败的回调
         indexedDB.create(dbName, {
             /*表名称*/
             tableName: tableName,
-            /*数据唯一性：默认为false，可重复*/
-            Keys: {'name': false, 'email': false},
+            /*可索引队列-->数据唯一性：默认为false，可重复*/
+            Keys: {'name': false, 'email': false, 'uid': false},
             /*主键是否自增，默认为true(设置为false后如没有指定该属性值则维持自增，自增值为主键所存在的length值)*/
             autoIncrement: false,
             /*主键：必须属性*/
@@ -234,15 +245,31 @@
     };
     Btn_fuzzy.onclick = function () {
         var config = {
+            /*关键词*/
             keyword: input.value[0] === '{' ? eval(input.value) : input.value,
+            /*索引键值*/
+            sortIndex: 'uid',
+            /*是否模糊*/
             isFuzzy: true,
+            /*回调函数*/
             fun: function (result) {
-                console.log(result);
                 var html = '<tr><td>id</td><td>uid</td><td>name</td><td>email</td></tr>';
                 for (var i = 0; i < result.length; i++) {
                     html += '<tr><td>' + result[i].id + '</td><td>' + result[i].uid + '</td><td>' + result[i].name + '</td><td>' + result[i].email + '</td></tr>'
                 }
                 document.getElementById('table').innerHTML = html;
+            },
+            /*如没有range对象则不设置额外的过滤属性*/
+            range: {
+                /*过滤对象方法
+                 IDBKeyRange.lowerBound(any,bool)小于//
+                 IDBKeyRange.upperBound(any,bool)大于//
+                 IDBKeyRange.bound(any,any,bool,bool)//之间
+                 IDBKeyRange.only(any)//等于
+                 */
+                IDB: IDBKeyRange.bound(0, 4000, true, true),
+                /*过滤键值*/
+                key: 'uid'
             }
         };
         indexedDB.search(dbName, tableName, config);
