@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+</head>
+<body>
+<button id="getDate">追加数据</button>
+<ul id="list"></ul>
+<script src="http://libs.baidu.com/jquery/2.0.0/jquery.min.js"></script>
+<script>
+    /*对元素生成dataset属性*/
+    /*防止死循环*/
+    var datasetTimer = {};
+    function CreateDataset(ele) {
+        /*已有dataset属性则不再设立监听事件,提高性能*/
+        if (ele.dataset)return;
+        ele.dataset = {};
+        /*属性拆解*/
+        var dataArr = ele.outerHTML ? ele.outerHTML.split("<")[1].match(/data-[\d\w]+=['"][\w\d]+["']/g) : false;
+        if (!dataArr)return;
+        for (var i = 0; i < dataArr.length; i++) {
+            var key = dataArr[i].split("=")[0].slice(5);
+            /*自调行程闭包，保存key*/
+            (function (key) {
+                Object.defineProperty(ele.attributes, 'data-' + key, {
+                    set: function (newValue) {
+                        /*防泄漏*/
+                        datasetTimer[key + 'XX' + newValue] =
+                            datasetTimer[key + 'XX' + newValue] ||
+                            setTimeout(function () {
+                                ele.dataset[key] = newValue;
+                                delete datasetTimer[key + 'XX' + newValue];
+                            }, 2);
+                    },
+                    get: function () {
+                        /*规定相同的取值方式*/
+                        return $(ele).attr('data-' + key);
+                    }
+                });
+                Object.defineProperty(ele.dataset, key, {
+                    set: function (newvalue) {
+                        $(ele).attr('data-' + key, newvalue);
+                    },
+                    get: function () {
+                        /*规定相同的取值方式*/
+                        return $(ele).attr('data-' + key);
+                    }
+                });
+            })(key);
+            ele.dataset[key] = dataArr[i].split('=')[1].slice(1, -1);
+        }
+    }
+</script>
+<script>
+    $(function () {
+        $.ajax({
+            type: 'get',
+            url: './testData.json',
+            dataType: 'json',
+            success: function (data) {
+                alert("交互完成");
+                var html = '';
+                $.each(data, function (k, v) {
+                    html += '<li data-i="' + k + '" data-uid="' + v.uid + '"><span data-id="' + v.Id + '">' + v.name + '</span><span>' + v.age + '</span></li>';
+                });
+                $('#list').html(html);
+                $.each($(document.body).find("*"), function (k, v) {
+                    CreateDataset(v);
+                });
+            }
+        });
+        $('#getDate').click(function () {
+            alert($('#list').children('li')[0].dataset.uid);
+        });
+    });
+</script>
+</body>
+</html>

@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+</head>
+<body>
+<div id="div" data-i="333" data-id="divs" data-pid="31" data-uid="333">31</div>
+<script src="http://libs.baidu.com/jquery/2.0.0/jquery.min.js"></script>
+<script>
+    var xxxx;
+    var div = document.getElementById('div');
+    var root = document.documentElement;
+    supportDOMAttrModified = (function () {
+        var fn, f = false, id = root.id;
+        fn = function () {
+            root.removeEventListener('DOMAttrModified', fn, false);
+            supportDOMAttrModified = true;
+            root.id = id;//还原它
+        };
+        root.addEventListener('DOMAttrModified', fn, false);
+        root.id = 'mass';//更新属性
+        f = root.id !== 'mass';
+        root.id = id;//无论如何也还原它
+        return f;
+    })();
+    if (document.body.attachEvent) {
+        document.body.attachEvent('onpropertychange', function (e) {
+            console.log('dom改变了');
+            console.log(e.propertyName);
+        });
+    }
+    var datasetTimer = {};
+
+    function CreateDataset(ele) {
+        ele.dataset = {};
+        var dataArr = ele.outerHTML ? ele.outerHTML.split("<")[1].match(/data-[\d\w]+=['"][\w\d]+["']/g) : false;
+        if (!dataArr)return;
+        for (var i = 0; i < dataArr.length; i++) {
+            var key = dataArr[i].split("=")[0].slice(5);
+            (function (key) {
+                Object.defineProperty(ele.attributes, 'data-' + key, {
+                    set: function (newValue) {
+                        datasetTimer[key + 'XX' + newValue] = datasetTimer[key + 'XX' + newValue] || setTimeout(function () {
+//                                console.log('attribute属性' + key + '更新了');
+                                ele.dataset[key] = newValue;
+                                delete datasetTimer[key + 'XX' + newValue];
+                            }, 2);
+                    }
+                });
+                Object.defineProperty(ele.dataset, key, {
+                    set: function (newvalue) {
+//                        console.log('元素名称为' + ele.id + '的data-' + key + '属性改变为' + newvalue);
+                        ele.attributes['data-' + key] = newvalue;
+                    }
+                });
+            })(key);
+            ele.dataset[key] = dataArr[i].split('=')[1].slice(1, -1);
+        }
+        return ele.dataset
+    }
+
+    $.each($(document.body).find("*"), function (k, v) {
+        CreateDataset(v);
+    });
+    //    CreateDataset(div);
+    div.innerHTML = '<div id="divs" data-aid="3123">32</div>';
+</script>
+</body>
+</html>

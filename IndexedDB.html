@@ -12,6 +12,7 @@
 <button id="search">测试查询</button>
 <button id="fuzzySearch">模糊查询</button>
 <table id="table"></table>
+<map name="map"></map>
 <script>
     function getRandom(max, min) {
         max = max || 100;
@@ -33,6 +34,8 @@
         Btn_search = document.getElementById('search'),
         Btn_fuzzy = document.getElementById('fuzzySearch'),
         input = document.getElementsByTagName('input')[0];
+
+
     //初始化数据库
     var indexedDB = window.indexedDB || window.msIndexedDB || window.mozIndexedDB || window.webkitIndexedDB;
     /*对象拆解*/
@@ -245,6 +248,19 @@
             };
         }
     };
+    /*批量删除*/
+    function queryDel(Array, funArguments) {
+        indexedDB.del(funArguments.dbName, funArguments.tableName, getMainKey(Array));
+    }
+    function getMainKey(Array) {
+        var arr = [];
+        for (var i = 0; i < Array.length; i++) {
+            arr[i] = Array[i].id;
+        }
+        console.log(arr);
+        return arr;
+    }
+
     Btn_create.onclick = function () {//打开数据库失败的回调
         indexedDB.create(dbName, {
             /*表名称*/
@@ -290,10 +306,10 @@
         var config = {
             /*关键词*/
             keyword: input.value[0] === '{' ? eval(input.value) : input.value,
-            /*索引键值*/
-            sortIndex: 'uid',
             /*是否模糊*/
             isFuzzy: true,
+            /*索引排序键值*/
+            sortIndex: 'email',
             /*查询到每一条的操作函数*/
             fun1: function (cursor, Arguments) {
                 cursor.value.email = '这是我定义的Email@CCdddC.com';
@@ -301,7 +317,7 @@
             },
             fun1Arguments: [],
             /*查询完毕的回调函数*/
-            fun2: function (result) {
+            fun2: function (result, Arguments) {
                 var html = '<tr><td>id</td><td>uid</td><td>name</td><td>email</td></tr>';
                 for (var i = 0; i < result.length; i++) {
                     html += '<tr><td>' + result[i].id + '</td><td>' + result[i].uid + '</td><td>' + result[i].name + '</td><td>' + result[i].email + '</td></tr>'
@@ -324,18 +340,6 @@
         };
         indexedDB.search(dbName, tableName, config);
     };
-    /*批量删除*/
-    function queryDel(Array, funArguments) {
-        indexedDB.del(funArguments.dbName, funArguments.tableName, getMainKey(Array));
-    }
-    function getMainKey(Array) {
-        var arr = [];
-        for (var i = 0; i < Array.length; i++) {
-            arr[i] = Array[i].id;
-        }
-        console.log(arr);
-        return arr;
-    }
 </script>
 </body>
 </html>
